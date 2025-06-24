@@ -1,0 +1,455 @@
+import React, { useState, useEffect } from 'react';
+import { Volume2, RotateCcw, Settings, Award, BookOpen, CheckCircle, Home, Dumbbell, Languages, Calendar } from 'lucide-react';
+
+// Симуляция базы данных слов
+const mockWords = [
+  {
+    id: 1,
+    eng: "cloakroom",
+    rus: "гардероб",
+    transcript: "[ˈkləʊkrum]",
+    image_data: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZjNmNGY2Ii8+CjxyZWN0IHg9IjIwIiB5PSIyMCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjOGI1Y2Y2IiByeD0iOCIvPgo8L3N2Zz4=",
+    sound_data: { voice: "audio_data_here" }
+  },
+  {
+    id: 2,
+    eng: "library",
+    rus: "библиотека",
+    transcript: "[ˈlaɪbrəri]",
+    image_data: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZjNmNGY2Ii8+CjxyZWN0IHg9IjIwIiB5PSIyMCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjM2I4MmY2IiByeD0iOCIvPgo8L3N2Zz4=",
+    sound_data: { voice: "audio_data_here" }
+  },
+  {
+    id: 3,
+    eng: "kitchen",
+    rus: "кухня",
+    transcript: "[ˈkɪtʃɪn]",
+    image_data: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZjNmNGY2Ii8+CjxyZWN0IHg9IjIwIiB5PSIyMCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZWY0NDQ0IiByeD0iOCIvPgo8L3N2Zz4=",
+    sound_data: { voice: "audio_data_here" }
+  },
+  {
+    id: 4,
+    eng: "garden",
+    rus: "сад",
+    transcript: "[ˈɡɑːdn]",
+    image_data: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZjNmNGY2Ii8+CjxyZWN0IHg9IjIwIiB5PSIyMCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjMTBiOTgxIiByeD0iOCIvPgo8L3N2Zz4=",
+    sound_data: { voice: "audio_data_here" }
+  },
+  {
+    id: 5,
+    eng: "office",
+    rus: "офис",
+    transcript: "[ˈɒfɪs]",
+    image_data: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZjNmNGY2Ii8+CjxyZWN0IHg9IjIwIiB5PSIyMCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZjU5ZTBiIiByeD0iOCIvPgo8L3N2Zz4=",
+    sound_data: { voice: "audio_data_here" }
+  }
+];
+
+const MiniApp = () => {
+  const [currentTab, setCurrentTab] = useState('home'); // home, languages, workouts
+  const [languageScreen, setLanguageScreen] = useState('select'); // select, setup, learning, results
+  const [selectedLanguage, setSelectedLanguage] = useState('');
+  const [selectedWordsPerDay, setSelectedWordsPerDay] = useState(5);
+  const [currentBatch, setCurrentBatch] = useState([]);
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [learnedWords, setLearnedWords] = useState([]);
+  const [userStats, setUserStats] = useState({ exp: 0, wordsLearned: 0, streak: 7 });
+
+  // Инициализация пакета слов для изучения
+  const initLearningBatch = () => {
+    const batch = mockWords.slice(0, 5);
+    setCurrentBatch(batch);
+    setCurrentWordIndex(0);
+    setShowTranslation(false);
+    setLearnedWords([]);
+    setLanguageScreen('learning');
+  };
+
+  // Переключение на следующее слово
+  const nextWord = () => {
+    if (currentWordIndex < currentBatch.length - 1) {
+      setCurrentWordIndex(prev => prev + 1);
+      setShowTranslation(false);
+    } else {
+      setUserStats(prev => ({
+        ...prev,
+        exp: prev.exp + currentBatch.length * 10,
+        wordsLearned: prev.wordsLearned + currentBatch.length
+      }));
+      setLanguageScreen('results');
+    }
+  };
+
+  // Отметить слово как изученное
+  const markWordAsLearned = () => {
+    const currentWord = currentBatch[currentWordIndex];
+    if (!learnedWords.includes(currentWord.id)) {
+      setLearnedWords(prev => [...prev, currentWord.id]);
+    }
+    nextWord();
+  };
+
+  // Показать перевод
+  const revealTranslation = () => {
+    setShowTranslation(true);
+  };
+
+  // Имитация проигрывания звука
+  const playSound = () => {
+    console.log('Playing sound for:', currentBatch[currentWordIndex]?.eng);
+  };
+
+  // Возврат к главному экрану
+  const backToHome = () => {
+    setCurrentTab('home');
+    setLanguageScreen('select');
+    setSelectedLanguage('');
+  };
+
+  // Возврат к выбору языка
+  const backToLanguageSelect = () => {
+    setLanguageScreen('select');
+    setSelectedLanguage('');
+  };
+
+  const currentWord = currentBatch[currentWordIndex];
+
+  return (
+    <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg overflow-hidden h-screen max-h-[600px] flex flex-col">
+
+      {/* Главный экран */}
+      {currentTab === 'home' && (
+        <>
+          {/* Заголовок */}
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-lg font-bold">Мини-приложение</h1>
+              <div className="flex items-center gap-2 text-sm">
+                <Award size={16} />
+                <span>{userStats.exp} XP</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Основной контент */}
+          <div className="flex-1 p-6">
+            {/* Прогресс в днях */}
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Прогресс в днях</h2>
+              <div className="bg-gradient-to-r from-green-400 to-blue-500 rounded-lg p-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-3xl font-bold">{userStats.streak}</div>
+                    <div className="text-sm opacity-90">дней подряд</div>
+                  </div>
+                  <Calendar size={40} className="opacity-80" />
+                </div>
+              </div>
+            </div>
+
+            {/* Статистика */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-blue-50 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-blue-600">{userStats.wordsLearned}</div>
+                <div className="text-sm text-gray-600">Слов изучено</div>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-purple-600">{userStats.exp}</div>
+                <div className="text-sm text-gray-600">Опыт</div>
+              </div>
+            </div>
+
+            {/* Информационные карточки */}
+            <div className="space-y-3">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-800 mb-2">Сегодняшняя цель</h3>
+                <p className="text-gray-600 text-sm">Изучить 5 новых слов</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Экран изучения языков */}
+      {currentTab === 'languages' && (
+        <>
+          {/* Заголовок с кнопкой назад */}
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4">
+            <div className="flex items-center gap-3">
+              <button onClick={backToHome} className="hover:bg-white/20 p-1 rounded">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <h1 className="text-lg font-bold">Изучение языков</h1>
+            </div>
+          </div>
+
+          {/* Выбор языка */}
+          {languageScreen === 'select' && (
+            <div className="flex-1 p-6 flex flex-col justify-center">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Выберите язык</h2>
+                <p className="text-gray-600">Какой язык хотите изучать?</p>
+              </div>
+
+              <div className="space-y-4">
+                <button
+                  onClick={() => {
+                    setSelectedLanguage('english');
+                    setLanguageScreen('setup');
+                  }}
+                  className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-4"
+                >
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    EN
+                  </div>
+                  <div className="text-left">
+                    <div className="font-semibold text-gray-800">English</div>
+                    <div className="text-sm text-gray-600">Английский язык</div>
+                  </div>
+                </button>
+
+                {/* Заглушки для будущих языков */}
+                <div className="w-full p-4 border-2 border-gray-100 rounded-lg opacity-50 flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    ES
+                  </div>
+                  <div className="text-left">
+                    <div className="font-semibold text-gray-400">Español</div>
+                    <div className="text-sm text-gray-400">Скоро доступно</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Настройка изучения */}
+          {languageScreen === 'setup' && (
+            <div className="flex-1 p-6 flex flex-col justify-center">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
+                  EN
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">English</h2>
+                <p className="text-gray-600">Выберите количество слов для изучения</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mb-8">
+                {[5, 10, 15].map(count => (
+                  <button
+                    key={count}
+                    onClick={() => setSelectedWordsPerDay(count)}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      selectedWordsPerDay === count
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="text-2xl font-bold">{count}</div>
+                    <div className="text-sm">слов</div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={initLearningBatch}
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all"
+                >
+                  Начать изучение
+                </button>
+                <button
+                  onClick={backToLanguageSelect}
+                  className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 px-6 rounded-lg font-semibold transition-all"
+                >
+                  Выбрать другой язык
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Экран изучения слов */}
+          {languageScreen === 'learning' && currentWord && (
+            <div className="flex-1 flex flex-col">
+              <div className="p-4 bg-gray-50">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-600">
+                    Прогресс: {currentWordIndex + 1} из {currentBatch.length}
+                  </span>
+                  <button
+                    onClick={backToLanguageSelect}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <Settings size={16} />
+                  </button>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all"
+                    style={{ width: `${((currentWordIndex + 1) / currentBatch.length) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 p-6 flex flex-col justify-center">
+                <div className="mb-6 flex justify-center">
+                  <img
+                    src={currentWord.image_data}
+                    alt={currentWord.eng}
+                    className="w-32 h-32 rounded-lg shadow-md"
+                  />
+                </div>
+
+                <div className="text-center mb-4">
+                  <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                    {currentWord.eng}
+                  </h2>
+                  <p className="text-gray-500 text-lg">{currentWord.transcript}</p>
+                </div>
+
+                <div className="flex justify-center mb-6">
+                  <button
+                    onClick={playSound}
+                    className="bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-full transition-all"
+                  >
+                    <Volume2 size={24} />
+                  </button>
+                </div>
+
+                {showTranslation && (
+                  <div className="text-center mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                    <p className="text-2xl font-semibold text-green-800">
+                      {currentWord.rus}
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {!showTranslation ? (
+                    <button
+                      onClick={revealTranslation}
+                      className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-semibold transition-all"
+                    >
+                      Показать перевод
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <button
+                        onClick={markWordAsLearned}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle size={20} />
+                        Изучено
+                      </button>
+                      <button
+                        onClick={nextWord}
+                        className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 px-6 rounded-lg font-semibold transition-all"
+                      >
+                        Пропустить
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Экран результатов */}
+          {languageScreen === 'results' && (
+            <div className="flex-1 p-6 flex flex-col justify-center items-center text-center">
+              <div className="mb-6">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle size={40} className="text-green-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Отлично!</h2>
+                <p className="text-gray-600">Вы изучили {currentBatch.length} новых слов</p>
+              </div>
+
+              <div className="w-full mb-6 p-4 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-blue-600">{learnedWords.length}</div>
+                    <div className="text-sm text-gray-600">Изучено</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-purple-600">+{currentBatch.length * 10}</div>
+                    <div className="text-sm text-gray-600">Опыт</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 w-full">
+                <button
+                  onClick={initLearningBatch}
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all"
+                >
+                  Изучить еще 5 слов
+                </button>
+                <button
+                  onClick={backToLanguageSelect}
+                  className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-semibold transition-all"
+                >
+                  Настройки
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Экран тренировок */}
+      {currentTab === 'workouts' && (
+        <>
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4">
+            <h1 className="text-lg font-bold">Тренировки</h1>
+          </div>
+          <div className="flex-1 p-6 flex items-center justify-center">
+            <div className="text-center text-gray-500">
+              <Dumbbell size={48} className="mx-auto mb-4 opacity-50" />
+              <p>Раздел в разработке</p>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Футер - навигация */}
+      <div className="bg-white border-t border-gray-200 p-2">
+        <div className="flex justify-around">
+          <button
+            onClick={() => setCurrentTab('languages')}
+            className={`flex flex-col items-center p-2 rounded-lg transition-all ${
+              currentTab === 'languages' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'
+            }`}
+          >
+            <Languages size={20} />
+            <span className="text-xs mt-1">Изучение языков</span>
+          </button>
+
+          <button
+            onClick={() => setCurrentTab('home')}
+            className={`flex flex-col items-center p-2 rounded-lg transition-all ${
+              currentTab === 'home' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'
+            }`}
+          >
+            <Home size={20} />
+            <span className="text-xs mt-1">Главная</span>
+          </button>
+
+          <button
+            onClick={() => setCurrentTab('workouts')}
+            className={`flex flex-col items-center p-2 rounded-lg transition-all ${
+              currentTab === 'workouts' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'
+            }`}
+          >
+            <Dumbbell size={20} />
+            <span className="text-xs mt-1">Тренировки</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MiniApp;
