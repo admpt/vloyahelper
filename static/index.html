@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Изучение языков</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!-- Проверка Telegram WebApp -->
+    <script>
+        // Ждём, пока Telegram WebApp инициализируется
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            const user = window.Telegram.WebApp.initDataUnsafe?.user;
+            // Если user === undefined (запущено не из Telegram), перенаправляем
+            if (!user?.id) {
+                console.log('⚠️ Приложение открыто не из Telegram, перенаправление...');
+                window.location.href = '/';
+                // Останавливаем выполнение остального кода
+                throw new Error('Not running in Telegram WebApp');
+            }
+        } else {
+            // Если вообще нет Telegram WebApp — тоже редирект
+            console.log('⚠️ Telegram WebApp недоступен, перенаправление...');
+            window.location.href = '/';
+            throw new Error('Telegram WebApp not available');
+        }
+        console.log('✅ Приложение запущено из Telegram WebApp');
+    </script>
+    <div class="container">
+        <div class="main-content">
+            <!-- Главная страница -->
+            <div id="home-screen" class="screen active">
+                <div class="header">
+                    <div class="app-icon">
+                        <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon streak">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <div class="stat-number" id="streak-count">0</div>
+                        <div class="stat-label">Дней подряд</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon words">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M6.5 2H20V20H6.5A2.5 2.5 0 0 1 4 17.5V4.5A2.5 2.5 0 0 1 6.5 2Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <div class="stat-number" id="total-words">0</div>
+                        <div class="stat-label">Слов изучено</div>
+                    </div>
+
+                    <div class="stat-card large-stat">
+                        <div class="stat-icon training">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                                <path d="M22 12H18L15 21L9 3L6 12H2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <div class="stat-number" id="training-count">0</div>
+                        <div class="stat-label">Тренировок завершено</div>
+                    </div>
+                </div>
+
+                <!-- Статус изучения на сегодня -->
+                <div id="today-status" style="margin-bottom: 24px; text-align: center;">
+                    <div id="progress-message" style="font-size: 16px; color: #666; margin-bottom: 16px;">
+                        Загрузка...
+                    </div>
+                    <div id="action-buttons" style="display: flex; gap: 12px; justify-content: center;">
+                        <button id="review-btn" class="save-button" onclick="startReview()" style="background: linear-gradient(135deg, #FF9500 0%, #FF3B30 100%); display: none;">
+                            🔄 Повторить изученные
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Экран настроек -->
+            <div id="settings-screen" class="screen">
+                <div class="nav-header">
+                    <button class="back-button" onclick="showScreen('home')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M19 12H5M12 19L5 12L12 5" stroke="#666666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="nav-title">Настройки</div>
+                </div>
+
+                <div class="section-title">Количество слов в день</div>
+                <div class="option-grid">
+                    <div class="option-card" onclick="selectWordsPerDay(5)" data-value="5">
+                        <div class="option-number">5</div>
+                        <div class="option-label">слов</div>
+                    </div>
+                    <div class="option-card" onclick="selectWordsPerDay(10)" data-value="10">
+                        <div class="option-number">10</div>
+                        <div class="option-label">слов</div>
+                    </div>
+                    <div class="option-card" onclick="selectWordsPerDay(15)" data-value="15">
+                        <div class="option-number">15</div>
+                        <div class="option-label">слов</div>
+                    </div>
+                </div>
+                <button class="save-button" onclick="saveSettings()" id="save-settings" disabled>
+                    Сохранить настройки
+                </button>
+            </div>
+
+            <!-- Экран изучения -->
+            <div id="learning-screen" class="screen">
+                <div class="learning-header">
+                    <button class="back-button" onclick="showScreen('home')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M19 12H5M12 19L5 12L12 5" stroke="#666666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="progress-indicator" id="word-progress">1 / 5</div>
+                </div>
+
+                <div class="learning-phase" id="learning-phase">
+                    📚 Запоминаем новые слова
+                </div>
+
+                <div class="learning-progress">
+                    <div class="learning-progress-fill" id="learning-progress-fill" style="width: 20%"></div>
+                </div>
+
+                <div class="word-card" id="word-card">
+                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                        <div class="word-image" id="word-image">🏠</div>
+                        <div class="word-english" id="word-english">house</div>
+                        <div class="word-transcript" id="word-transcript">[haʊs]</div>
+
+                        <button class="play-button" onclick="playSound()">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                <path d="M8 5V19L19 12L8 5Z" fill="white"/>
+                            </svg>
+                        </button>
+
+                        <div class="word-russian" id="word-russian">дом</div>
+
+                        <!-- Викторина -->
+                        <div class="quiz-options" id="quiz-options" style="display: none;">
+                            <div class="quiz-question" id="quiz-question">Выберите правильный перевод:</div>
+                            <div class="options-grid">
+                                <button class="option-btn" onclick="selectAnswer(0)" id="option-0">вариант 1</button>
+                                <button class="option-btn" onclick="selectAnswer(1)" id="option-1">вариант 2</button>
+                                <button class="option-btn" onclick="selectAnswer(2)" id="option-2">вариант 3</button>
+                                <button class="option-btn" onclick="selectAnswer(3)" id="option-3">вариант 4</button>
+                            </div>
+                        </div>
+
+                        <!-- Текстовый ввод -->
+                        <div class="text-input-section" id="text-input-section" style="display: none;">
+                            <div class="input-question" id="input-question">Введите перевод:</div>
+                            <input type="text" class="text-input" id="text-input" placeholder="Введите ответ...">
+                            <button class="check-btn" onclick="checkTextAnswer()">Проверить</button>
+                        </div>
+                    </div>
+
+                    <div class="card-action-buttons">
+                        <div id="memory-action" style="display: none;">
+                            <button class="card-action-button memory-button" onclick="nextWord()">
+                                Запомнил ✓
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Экран завершения -->
+            <div id="completion-screen" class="screen">
+                <div class="completion-card">
+                    <div class="completion-icon">
+                        <svg width="60" height="60" viewBox="0 0 24 24" fill="none">
+                            <path d="M20 6L9 17L4 12" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="completion-title">Потрясающе!</div>
+                    <div class="completion-subtitle">Вы выучили новые слова и проверили свои знания</div>
+                    <button class="save-button" onclick="showScreen('home')">
+                        На главную
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Футер -->
+        <div class="footer">
+            <div class="footer-item" onclick="startLearning()">
+                <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+                <div class="footer-text">Изучение<br>Языков</div>
+            </div>
+
+            <div class="footer-item active" onclick="showScreen('home')">
+                <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9,22 9,12 15,12 15,22"/>
+                </svg>
+                <div class="footer-text">Главная</div>
+            </div>
+
+            <div class="footer-item" onclick="showScreen('settings')">
+                <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                </svg>
+                <div class="footer-text">Настройки</div>
+            </div>
+        </div>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>

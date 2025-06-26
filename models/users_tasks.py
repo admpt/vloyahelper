@@ -24,6 +24,7 @@ class User(Base):
     eng_skipped_words = Column(JSON, default=lambda: [])  # список ID пропущенных слов
     last_learning_date = Column(Date, nullable=True)  # дата последнего изучения
     current_streak = Column(Integer, default=0)  # количество дней подряд
+
 class Task(Base):
     __tablename__ = "tasks"
 
