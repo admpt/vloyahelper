@@ -204,38 +204,128 @@ function checkDayStatus() {
         }
     }
 
-    updateTodayStatus();
+    updateTodayProgress();
 }
 
-// Обновление статуса изучения на сегодня
-function updateTodayStatus() {
+// НОВАЯ функция обновления прогресса сегодня
+function updateTodayProgress() {
     if (!userData) return;
 
     const today = new Date().toISOString().split('T')[0];
     const learnedToday = userData.last_learning_date === today ? (userData.eng_learned_words?.length || 0) : 0;
-    const targetCount = userData.words_per_day || 0;
+    const targetCount = userData.words_per_day || 5; // По умолчанию 5 слов
 
-    const reviewBtn = document.getElementById('review-btn');
+    // Предполагаем, что тренировки = 20% от изученных слов (или фиксированное число)
+    const trainingTarget = Math.max(1, Math.floor(targetCount * 0.4)); // 40% от слов идет на тренировки
+    const wordsTarget = targetCount - trainingTarget; // Остальное на изучение
+
+    // Сегодняшние тренировки (пока захардкодим, потом можно добавить в userData)
+    const trainingsToday = 0; // TODO: добавить трекинг тренировок
+
+    const progressNumber = document.getElementById('progress-number');
+    const progressTotal = document.getElementById('progress-total');
     const progressMessage = document.getElementById('progress-message');
+    const progressBar = document.getElementById('progress-bar');
+    const reviewBtn = document.getElementById('review-btn');
 
-    if (!progressMessage || !reviewBtn) return;
+    // Общий прогресс (слова + тренировки)
+    const totalCompleted = learnedToday + trainingsToday;
+    const totalTarget = wordsTarget + trainingTarget;
 
-    if (targetCount === 0) {
-        progressMessage.innerHTML = 'Сначала выберите количество слов для изучения в день';
-        progressMessage.style.color = '#666';
-        reviewBtn.style.display = 'none';
-    } else if (learnedToday >= targetCount) {
-        reviewBtn.style.display = 'block';
-        progressMessage.style.color = '#34C759';
-        progressMessage.innerHTML = '🎉 Отлично! Все слова на сегодня изучены!<br>Можете повторить их для закрепления';
-    } else {
-        reviewBtn.style.display = learnedToday > 0 ? 'block' : 'none';
-        progressMessage.style.color = '#666';
-        progressMessage.innerHTML = `Изучено сегодня: ${learnedToday} из ${targetCount} слов`;
+    if (progressNumber) progressNumber.textContent = totalCompleted;
+    if (progressTotal) progressTotal.textContent = `из ${totalTarget}`;
+
+    // Рассчитываем процент выполнения для двух сегментов
+    const wordsPercentage = totalTarget > 0 ? (learnedToday / totalTarget) * 100 : 0;
+    const trainingsPercentage = totalTarget > 0 ? (trainingsToday / totalTarget) * 100 : 0;
+    const totalPercentage = wordsPercentage + trainingsPercentage;
+
+    const circumference = 2 * Math.PI * 60; // радиус 60
+    const offset = circumference - (totalPercentage / 100) * circumference;
+
+    // Обновляем круговой прогресс
+    if (progressBar) {
+        progressBar.style.strokeDashoffset = offset;
+
+        // Создаем градиент для двух сегментов
+        const gradientDefs = progressBar.parentElement.querySelector('defs');
+        if (gradientDefs) {
+            // Обновляем градиент в зависимости от выполнения
+            const gradient = gradientDefs.querySelector('#progressGradient');
+            if (gradient) {
+                if (learnedToday >= wordsTarget && trainingsToday >= trainingTarget) {
+                    // Все выполнено - зеленый
+                    gradient.innerHTML = `
+                        <stop offset="0%" style="stop-color:#34C759"/>
+                        <stop offset="100%" style="stop-color:#30D158"/>
+                    `;
+                } else if (learnedToday >= wordsTarget) {
+                    // Слова выполнены, тренировки нет - оранжевый/зеленый
+                    gradient.innerHTML = `
+                        <stop offset="0%" style="stop-color:#34C759"/>
+                        <stop offset="50%" style="stop-color:#FF9500"/>
+                        <stop offset="100%" style="stop-color:#FF9500"/>
+                    `;
+                } else {
+                    // В процессе - синий/фиолетовый
+                    gradient.innerHTML = `
+                        <stop offset="0%" style="stop-color:#007AFF"/>
+                        <stop offset="100%" style="stop-color:#5856D6"/>
+                    `;
+                }
+            }
+        }
+    }
+
+    // Обновляем сообщение и кнопки
+    if (progressMessage) {
+        if (targetCount === 0) {
+            progressMessage.innerHTML = 'Сначала выберите количество заданий в день';
+            progressMessage.style.color = '#666';
+            if (reviewBtn) reviewBtn.style.display = 'none';
+        } else if (learnedToday >= wordsTarget && trainingsToday >= trainingTarget) {
+            if (reviewBtn) reviewBtn.style.display = 'flex';
+            progressMessage.style.color = '#34C759';
+            progressMessage.innerHTML = '🎉 Превосходно! Все задания на сегодня выполнены!<br>Можете повторить изученное';
+        } else if (learnedToday >= wordsTarget) {
+            if (reviewBtn) reviewBtn.style.display = 'flex';
+            progressMessage.style.color = '#FF9500';
+            progressMessage.innerHTML = `✅ Слова изучены (${learnedToday}/${wordsTarget})!<br>⏳ Осталось тренировок: ${trainingTarget - trainingsToday}`;
+        } else {
+            if (reviewBtn) reviewBtn.style.display = learnedToday > 0 ? 'flex' : 'none';
+            progressMessage.style.color = '#666';
+
+            const remainingWords = wordsTarget - learnedToday;
+            const remainingTrainings = trainingTarget - trainingsToday;
+
+            if (remainingWords === 1 && remainingTrainings === 0) {
+                progressMessage.innerHTML = `Осталось изучить всего 1 слово!`;
+            } else if (remainingWords === 0 && remainingTrainings === 1) {
+                progressMessage.innerHTML = `Осталось выполнить 1 тренировку!`;
+            } else {
+                progressMessage.innerHTML = `📚 Слова: ${learnedToday}/${wordsTarget} • 🏋️ Тренировки: ${trainingsToday}/${trainingTarget}`;
+            }
+        }
     }
 }
 
-// Функции навигации
+// НОВАЯ функция обновления сегодняшней даты
+function updateTodayDate() {
+    const todayDateEl = document.getElementById('today-date');
+    if (todayDateEl) {
+        const today = new Date();
+        const options = { day: 'numeric', month: 'long' };
+        const dateString = today.toLocaleDateString('ru-RU', options);
+        todayDateEl.textContent = dateString;
+    }
+}
+
+// СТАРАЯ функция (оставляем для совместимости)
+function updateTodayStatus() {
+    updateTodayProgress();
+}
+
+// ОБНОВЛЕННАЯ функция showScreen для новых экранов
 function showScreen(screenName) {
     console.log('📱 Переход на экран:', screenName);
 
@@ -267,6 +357,9 @@ function showScreen(screenName) {
         if (userData && userData.words_per_day) {
             selectWordsPerDay(userData.words_per_day);
         }
+    } else if (screenName === 'statistics') {
+        // Обновляем статистику при открытии экрана
+        updateUI();
     }
 }
 
@@ -300,7 +393,7 @@ async function saveSettings() {
         userData.words_per_day = selectedWordsPerDay;
         await saveUserData();
         updateUI();
-        updateTodayStatus();
+        updateTodayProgress();
 
         if (saveBtn) {
             saveBtn.textContent = 'Сохранено ✓';
@@ -397,6 +490,7 @@ function loadCurrentBatch() {
     currentLearningSession.currentIndex = 0;
 }
 
+// ОБНОВЛЕННАЯ функция displayCurrentWord
 function displayCurrentWord() {
     const word = currentLearningSession.currentBatch[currentLearningSession.currentIndex];
     if (!word) {
@@ -406,8 +500,39 @@ function displayCurrentWord() {
 
     console.log('📖 Показываем слово из БД:', word);
 
-    // Обновляем UI
-    document.getElementById('word-image').textContent = word.image_data || '📝';
+    // Получаем элемент для картинки/эмодзи
+    const imageEl = document.getElementById('word-image');
+
+    if (imageEl) {
+        // Проверяем, есть ли image_data и что это не заблокированная картинка
+        const blockedImageData = "iVBORw0KGgoAAAANSUhEUgAAAH8AAAB/CAIAAABJ34pEAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYxIDY0LjE0MDk0OSwgMjAxMC8xMi8wNy0xMDo1NzowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNS4xIFdpbmRvd3MiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6NEJFNkNFQUExNUYxMTFFQTlGOEI4RTJGRUNBQTUwOTEiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6NEJFNkNFQUIxNUYxMTFFQTlGOEI4RTJGRUNBQTUwOTEiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo0QkU2Q0VBODE1RjExMUVBOUY4QjhFMkZFQ0FBNTA5MSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo0QkU2Q0VBOTE1RjExMUVBOUY4QjhFMkZFQ0FBNTA5MSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Pm22FE0AABq1SURBVHja7J2HduNKjoYZJFE5B4fuuTPz/k+0e3b23HvbbmXJClQm9wNKouXQQU7t9rK6nRQo1l8o4AcKhbLDMLTi9ouaHaMfox+jH7cY/Rj9uMXox+jHLUY/Rj9uMfox+nGL0Y/Rj1uMfox+3GL0Y/TjFqMfox+33x793W632Wy3uy1f0ra7IAj44rZDvluW3r/tOrbruo7rOI78TNBcl2/JZNK2Y/Sf1NabzWKxnM3mq9VquVit1ht+YSQ2m81uFzAWOgqBbdmJZCKVSiX5nkzySzrteV4qm83msplMJm2/1xF4X+gj4MC9BGf9pz83/ET81zIFttuNCD9TANwDMwOM7B/k3U3sRT6ZSKQ8GREGgiHx5AfjIcMSo/9IQ6Kn09l4PLmZ8HPu+wsekVu8K7jfv9+7L7YZIQaDMSgU8vlctlop80sul30ns+HXo79colt81Iu/WIA4km+kH+jBjjt0HFvA0n8GNfvhmOwNwNH3UL4zQ3gLU8KTlkQP8SOv+qhQyDEMPPX/EX0+F8UNysPReDgcD4ajw7f9WW+2u+Vqbhj9GAI+vz5EvNRJjOLpeDoeDwajkb/wt1sPpwAQ8tufJ1/qPjIZr1gs1Br1UjHfqNcw0B8cfWWJAdRxPL7p9Qbd7gD019st1tKx7e/L+34sDmOyh1X0S/SK/V/aox90y8w8Xs08qJRLrVajXqvCjhwhrfbHRB+RH41uRqPxYDhGuS+wq9stNwBLN+jvJT209nxeiM1O6byTTEElk17KY6RgNOhrXqCewA7MHVuuwRvWsNK1NJ4RMiqP69dhOkUzCa+BN6pJSIE7VrlWq9SqFYzBR0PfqHi0TbvT6/UHk8nMdZ0DKEc0xvymjzrOflAACNUMZYTFZ9JpKGXKE0LJCIE1JJRBctXJ4lOWqzVmHNpqGKrxycw4milxb4YZbcYQ4jFUq5WLs2alWoYVoZ3ewBIk3maQgbvb7Y0nU+gkw2CUu3WsM0Q1izbge8JxUQi5bBZ2mM1mspm00PdkQiF2jSzzHSRVjweH8bKNPtnqF9AzvWBPk+nMny9QcYyGubgY9sOoG8vBI7wX4eBqvB4thE1+A8/g1dFHPGHviHy73YXDA4qrPlH0Ao0XCHxJVQLAjJhDCuHnpRIWMZtOp5+s6KCw4j1Mse1T4bGrtfrIxkm2IiKLpPPnuje3Ww003UMQ6NRQ9e9KSV9Xc3DxQH96rqNQC38Jd1G1d+gd2Jp4DZINwoXA1gul/CHGABMsXqsoqGe4zxv8I83O1xm0Mfa482Ndf4x2XCKHeeWWR3kwELF4RE0Mfa882Nfw=";
+
+        if (word.image_data && word.image_data !== blockedImageData && !word.image_data.startsWith(blockedImageData.substring(0, 100))) {
+            // Если это картинка (base64) и не заблокированная
+            imageEl.innerHTML = `<img src="data:image/png;base64,${word.image_data}" alt="Word Image" style="max-width: 100%; max-height: 120px; border-radius: 10px;">`;
+            console.log('🖼️ Показываем картинку из БД для слова:', word.eng);
+        } else if (word.image_data && typeof word.image_data === 'string' && word.image_data.length <= 10 && !/^[A-Za-z0-9+/]/.test(word.image_data)) {
+            // Если это эмодзи (короткая строка, не base64)
+            imageEl.innerHTML = word.image_data;
+            console.log('😊 Показываем эмодзи из БД для слова:', word.eng);
+        } else {
+            // Показываем дефолтную картинку
+            imageEl.innerHTML = `<img src="/static/gb.png" alt="British Flag" style="max-width: 100%; max-height: 120px; border-radius: 10px;">`;
+            console.log('🇬🇧 Показываем дефолтный флаг для слова:', word.eng);
+        }
+
+        // Добавляем анимацию появления
+        imageEl.style.opacity = '0';
+        imageEl.style.transform = 'scale(0.8)';
+
+        // Плавно показываем с анимацией
+        setTimeout(() => {
+            imageEl.style.opacity = '1';
+            imageEl.style.transform = 'scale(1)';
+        }, 100);
+    }
+
+    // Обновляем остальные элементы
     document.getElementById('word-english').textContent = word.eng;
     document.getElementById('word-transcript').textContent = word.transcript || '';
     document.getElementById('word-russian').textContent = word.rus;
@@ -590,18 +715,14 @@ function shuffleArray(array) {
 
 function selectAnswer(optionIndex) {
     const optionBtn = document.getElementById(`option-${optionIndex}`);
-    if (!optionBtn) return;
-
     const isCorrect = optionBtn.dataset.correct === 'true';
 
     for (let i = 0; i < 4; i++) {
         const btn = document.getElementById(`option-${i}`);
-        if (btn) {
-            btn.style.pointerEvents = 'none';
+        btn.style.pointerEvents = 'none';
 
-            if (btn.dataset.correct === 'true') {
-                btn.classList.add('correct');
-            }
+        if (btn.dataset.correct === 'true') {
+            btn.classList.add('correct');
         }
     }
 
@@ -634,8 +755,6 @@ function resetQuiz() {
 
 function setupTextInput() {
     const currentWord = currentLearningSession.currentBatch[currentLearningSession.currentIndex];
-    if (!currentWord) return;
-
     const direction = Math.random() > 0.5 ? 'rus_to_eng' : 'eng_to_rus';
     const questionEl = document.getElementById('input-question');
     const inputEl = document.getElementById('text-input');
@@ -663,8 +782,6 @@ function setupTextInput() {
 
 function checkTextAnswer() {
     const inputEl = document.getElementById('text-input');
-    if (!inputEl) return;
-
     const userAnswer = inputEl.value.toLowerCase().trim();
     const correctAnswer = inputEl.dataset.correct;
 
@@ -675,7 +792,7 @@ function checkTextAnswer() {
         inputEl.classList.add('wrong');
 
         const currentWord = currentLearningSession.currentBatch[currentLearningSession.currentIndex];
-        if (currentWord && !currentLearningSession.wrongAnswers.includes(currentWord.id)) {
+        if (!currentLearningSession.wrongAnswers.includes(currentWord.id)) {
             currentLearningSession.wrongAnswers.push(currentWord.id);
         }
 
@@ -752,7 +869,7 @@ async function completeBatch() {
 
     if (currentLearningSession.batchIndex >= totalBatches) {
         updateUI();
-        updateTodayStatus();
+        updateTodayProgress();
         showCompletionScreen();
     } else {
         showNextBatchButton();
@@ -779,16 +896,6 @@ function showCompletionScreen() {
             completionSubtitle.textContent = 'Вы успешно повторили изученные слова и закрепили знания';
         } else {
             completionTitle.textContent = 'Потрясающе!';
-function showCompletionScreen() {
-    const completionTitle = document.querySelector('.completion-title');
-    const completionSubtitle = document.querySelector('.completion-subtitle');
-
-    if (completionTitle && completionSubtitle) {
-        if (currentLearningSession.isReviewMode) {
-            completionTitle.textContent = 'Отличное повторение!';
-            completionSubtitle.textContent = 'Вы успешно повторили изученные слова и закрепили знания';
-        } else {
-            completionTitle.textContent = 'Потрясающе!';
             completionSubtitle.textContent = 'Вы выучили новые слова и проверили свои знания';
         }
     }
@@ -796,6 +903,7 @@ function showCompletionScreen() {
     showScreen('completion');
 }
 
+// ОБНОВЛЕННАЯ функция playSound
 function playSound() {
     const playBtn = document.querySelector('.play-button');
     if (playBtn) {
@@ -805,37 +913,195 @@ function playSound() {
         }, 150);
     }
 
-    // Воспроизведение звука из базы данных
+    // Получаем текущее слово
     const currentWord = currentLearningSession.currentBatch?.[currentLearningSession.currentIndex];
-    if (currentWord && currentWord.sound_data && currentWord.sound_data.voice) {
+
+    if (!currentWord) {
+        console.log('⚠️ Нет текущего слова для воспроизведения');
+        return;
+    }
+
+    console.log('🔊 Попытка воспроизвести звук для слова:', currentWord.eng);
+    console.log('🔍 Данные sound_data:', currentWord.sound_data);
+
+    // Проверяем разные варианты структуры sound_data
+    let audioBase64 = null;
+
+    if (currentWord.sound_data) {
+        if (typeof currentWord.sound_data === 'string') {
+            // sound_data это строка base64
+            audioBase64 = currentWord.sound_data;
+            console.log('🎵 Найден звук как строка');
+        } else if (currentWord.sound_data.gtts) {
+            // sound_data это объект с полем gtts (Google Text-to-Speech)
+            audioBase64 = currentWord.sound_data.gtts;
+            console.log('🎵 Найден звук в sound_data.gtts');
+        } else if (currentWord.sound_data.voice) {
+            // sound_data это объект с полем voice
+            audioBase64 = currentWord.sound_data.voice;
+            console.log('🎵 Найден звук в sound_data.voice');
+        } else if (currentWord.sound_data.audio) {
+            // Возможно звук в поле audio
+            audioBase64 = currentWord.sound_data.audio;
+            console.log('🎵 Найден звук в sound_data.audio');
+        }
+    }
+
+    if (audioBase64) {
         try {
-            const audio = new Audio(`data:audio/mp3;base64,${currentWord.sound_data.voice}`);
-            audio.play();
-            console.log('🔊 Воспроизводим звук из БД для слова:', currentWord.eng);
+            // Убираем префикс data:audio если он есть
+            const cleanBase64 = audioBase64.replace(/^data:audio\/[^;]+;base64,/, '');
+
+            // Создаем аудио элемент (GTTS обычно в формате MP3)
+            const audio = new Audio(`data:audio/mp3;base64,${cleanBase64}`);
+
+            // Устанавливаем громкость
+            audio.volume = 0.8;
+
+            // Обработчики событий
+            audio.onloadstart = () => console.log('🔄 Загружаем аудио...');
+            audio.oncanplay = () => console.log('▶️ Аудио готово к воспроизведению');
+            audio.onended = () => console.log('✅ Воспроизведение завершено');
+            audio.onerror = (e) => {
+                console.error('❌ Ошибка воспроизведения:', e);
+                // Показываем ошибку на кнопке
+                showPlayError();
+            };
+
+            // Воспроизводим
+            audio.play().then(() => {
+                console.log('🔊 Звук GTTS успешно воспроизведен для слова:', currentWord.eng);
+            }).catch(error => {
+                console.error('❌ Ошибка при воспроизведении GTTS:', error);
+
+                // Пробуем альтернативные форматы
+                tryAlternativeAudio(cleanBase64, currentWord.eng);
+            });
+
         } catch (error) {
-            console.log('❌ Не удалось воспроизвести звук из БД:', error);
+            console.error('❌ Ошибка создания аудио элемента:', error);
+            tryAlternativeAudio(audioBase64, currentWord.eng);
         }
     } else {
-        console.log('⚠️ Звуковые данные не найдены в БД для слова');
+        console.log('⚠️ Звуковые данные не найдены для слова:', currentWord.eng);
+
+        // Альтернатива - синтез речи браузера
+        tryTextToSpeech(currentWord.eng);
     }
 }
 
+// Функция показа ошибки на кнопке воспроизведения
+function showPlayError() {
+    const playBtn = document.querySelector('.play-button');
+    if (playBtn) {
+        const originalHTML = playBtn.innerHTML;
+        const originalStyle = playBtn.style.background;
+
+        playBtn.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" stroke="white" stroke-width="2"/></svg>';
+        playBtn.style.background = '#FF3B30';
+
+        setTimeout(() => {
+            playBtn.innerHTML = originalHTML;
+            playBtn.style.background = originalStyle;
+        }, 2000);
+    }
+}
+
+// Альтернативная функция для других форматов аудио
+function tryAlternativeAudio(base64Data, word) {
+    console.log('🔄 Пробуем альтернативные форматы аудио...');
+
+    const formats = ['wav', 'ogg', 'webm'];
+
+    for (const format of formats) {
+        try {
+            const audio = new Audio(`data:audio/${format};base64,${base64Data}`);
+            audio.volume = 0.8;
+
+            audio.play().then(() => {
+                console.log(`🔊 Звук воспроизведен в формате ${format} для слова:`, word);
+                return; // Выходим если успешно
+            }).catch(() => {
+                console.log(`❌ Формат ${format} не подошел`);
+            });
+
+        } catch (error) {
+            console.log(`❌ Ошибка формата ${format}:`, error);
+        }
+    }
+
+    // Если ничего не сработало, пробуем синтез речи
+    setTimeout(() => tryTextToSpeech(word), 1000);
+}
+
+// Функция синтеза речи как запасной вариант
+function tryTextToSpeech(text) {
+    if ('speechSynthesis' in window) {
+        console.log('🗣️ Используем синтез речи браузера для:', text);
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.8;
+        utterance.pitch = 1;
+        utterance.volume = 0.8;
+
+        utterance.onstart = () => console.log('🗣️ Начинаем синтез речи');
+        utterance.onend = () => console.log('✅ Синтез речи завершен');
+        utterance.onerror = (e) => console.error('❌ Ошибка синтеза речи:', e);
+
+        speechSynthesis.speak(utterance);
+    } else {
+        console.log('❌ Синтез речи не поддерживается браузером');
+
+        // Показываем ошибку на кнопке
+        showPlayError();
+    }
+}
+
+// ОБНОВЛЕННАЯ функция updateUI
 function updateUI() {
     if (!userData) return;
-
-    const streakEl = document.getElementById('streak-count');
-    const wordsEl = document.getElementById('total-words');
-    const trainingEl = document.getElementById('training-count');
 
     const totalLearnedWords = userData.eng_learned_words?.length || 0;
     const currentStreak = userData.current_streak || 0;
     const trainingCount = Math.floor(totalLearnedWords / 5);
 
+    // Обновляем компактную статистику
+    const streakEl = document.getElementById('streak-count');
+    const wordsEl = document.getElementById('total-words');
+    const trainingEl = document.getElementById('training-count');
+
     if (streakEl) streakEl.textContent = currentStreak;
     if (wordsEl) wordsEl.textContent = totalLearnedWords;
     if (trainingEl) trainingEl.textContent = trainingCount;
 
+    // Обновляем детальную статистику (для экрана статистики)
+    const streakDetail = document.getElementById('streak-count-detail');
+    const wordsDetail = document.getElementById('total-words-detail');
+    const trainingDetail = document.getElementById('training-count-detail');
+
+    if (streakDetail) streakDetail.textContent = currentStreak;
+    if (wordsDetail) wordsDetail.textContent = totalLearnedWords;
+    if (trainingDetail) trainingDetail.textContent = trainingCount;
+
+    updateTodayProgress();
+    updateTodayDate();
+
     console.log('📊 UI обновлен - Streak:', currentStreak, 'Слов изучено:', totalLearnedWords, 'Тренировок:', trainingCount);
+}
+
+// Функция анимации прогресса при загрузке
+function animateProgressCircle() {
+    const progressBar = document.getElementById('progress-bar');
+    if (progressBar) {
+        // Сначала прячем прогресс
+        progressBar.style.strokeDashoffset = '377';
+
+        // Затем показываем с анимацией
+        setTimeout(() => {
+            updateTodayProgress();
+        }, 500);
+    }
 }
 
 // Обработчики событий
@@ -848,10 +1114,13 @@ document.addEventListener('keypress', function(e) {
     }
 });
 
-// Инициализация при загрузке страницы
+// ОБНОВЛЕННАЯ инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 DOM загружен, инициализируем приложение...');
     initTelegramWebApp();
+
+    // Анимируем прогресс при загрузке
+    setTimeout(animateProgressCircle, 1000);
 });
 
 // Обработка закрытия приложения

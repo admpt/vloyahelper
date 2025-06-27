@@ -7,32 +7,18 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<!-- Проверка Telegram WebApp -->
-    <script>
-        // Ждём, пока Telegram WebApp инициализируется
-        if (window.Telegram && window.Telegram.WebApp) {
-            window.Telegram.WebApp.ready();
-            const user = window.Telegram.WebApp.initDataUnsafe?.user;
-            // Если user === undefined (запущено не из Telegram), перенаправляем
-            if (!user?.id) {
-                console.log('⚠️ Приложение открыто не из Telegram, перенаправление...');
-                window.location.href = '/';
-                // Останавливаем выполнение остального кода
-                throw new Error('Not running in Telegram WebApp');
-            }
-        } else {
-            // Если вообще нет Telegram WebApp — тоже редирект
-            console.log('⚠️ Telegram WebApp недоступен, перенаправление...');
-            window.location.href = '/';
-            throw new Error('Telegram WebApp not available');
-        }
-        console.log('✅ Приложение запущено из Telegram WebApp');
-    </script>
     <div class="container">
         <div class="main-content">
             <!-- Главная страница -->
             <div id="home-screen" class="screen active">
                 <div class="header">
+                    <button class="settings-button" onclick="showScreen('settings')">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </button>
+
                     <div class="app-icon">
                         <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
                             <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
@@ -40,51 +26,143 @@
                             <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linejoin="round"/>
                         </svg>
                     </div>
+
+                    <button class="stats-button" onclick="showScreen('statistics')">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 3v18h18"/>
+                            <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+                        </svg>
+                    </button>
                 </div>
 
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon streak">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <!-- Компактная общая статистика -->
+                <div class="compact-stats">
+                    <div class="compact-stat">
+                        <div class="compact-stat-icon streak">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                                 <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="white"/>
                             </svg>
                         </div>
-                        <div class="stat-number" id="streak-count">0</div>
-                        <div class="stat-label">Дней подряд</div>
+                        <div class="compact-stat-content">
+                            <div class="compact-stat-number" id="streak-count">0</div>
+                            <div class="compact-stat-label">дней</div>
+                        </div>
                     </div>
 
-                    <div class="stat-card">
-                        <div class="stat-icon words">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                    <div class="compact-stat">
+                        <div class="compact-stat-icon words">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 <path d="M6.5 2H20V20H6.5A2.5 2.5 0 0 1 4 17.5V4.5A2.5 2.5 0 0 1 6.5 2Z" fill="white"/>
                             </svg>
                         </div>
-                        <div class="stat-number" id="total-words">0</div>
-                        <div class="stat-label">Слов изучено</div>
+                        <div class="compact-stat-content">
+                            <div class="compact-stat-number" id="total-words">0</div>
+                            <div class="compact-stat-label">слов</div>
+                        </div>
                     </div>
 
-                    <div class="stat-card large-stat">
-                        <div class="stat-icon training">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                                <path d="M22 12H18L15 21L9 3L6 12H2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <div class="compact-stat">
+                        <div class="compact-stat-icon training">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M6.5 6.5h11m-11 11h11" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M9 9h6v6H9z" fill="white" stroke="white" stroke-width="1"/>
+                                <circle cx="6.5" cy="6.5" r="2.5" fill="white"/>
+                                <circle cx="17.5" cy="6.5" r="2.5" fill="white"/>
+                                <circle cx="6.5" cy="17.5" r="2.5" fill="white"/>
+                                <circle cx="17.5" cy="17.5" r="2.5" fill="white"/>
                             </svg>
                         </div>
-                        <div class="stat-number" id="training-count">0</div>
-                        <div class="stat-label">Тренировок завершено</div>
+                        <div class="compact-stat-content">
+                            <div class="compact-stat-number" id="training-count">0</div>
+                            <div class="compact-stat-label">тренировок</div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Статус изучения на сегодня -->
-                <div id="today-status" style="margin-bottom: 24px; text-align: center;">
-                    <div id="progress-message" style="font-size: 16px; color: #666; margin-bottom: 16px;">
+                <!-- Основной прогресс сегодня -->
+                <div class="today-progress-card">
+                    <div class="today-progress-header">
+                        <h2>Сегодня</h2>
+                        <div class="today-date" id="today-date">26 июня</div>
+                    </div>
+
+                    <div class="progress-circle-container">
+                        <div class="progress-circle" id="progress-circle">
+                            <svg width="140" height="140" viewBox="0 0 140 140">
+                                <!-- Фоновый круг -->
+                                <circle cx="70" cy="70" r="60" stroke="#f0f0f0" stroke-width="8" fill="none"/>
+
+                                <!-- Прогресс тренировок (внешний сегмент) -->
+                                <circle cx="70" cy="70" r="60" stroke="#FF9500" stroke-width="4" fill="none"
+                                        stroke-dasharray="377" stroke-dashoffset="377" class="progress-training" id="progress-training"
+                                        transform="rotate(-90 70 70)" stroke-linecap="round" opacity="0.7"/>
+
+                                <!-- Прогресс изучения слов (основной) -->
+                                <circle cx="70" cy="70" r="60" stroke="url(#progressGradient)" stroke-width="8" fill="none"
+                                        stroke-dasharray="377" stroke-dashoffset="377" class="progress-bar" id="progress-bar"
+                                        transform="rotate(-90 70 70)" stroke-linecap="round"/>
+
+                                <defs>
+                                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#007AFF"/>
+                                        <stop offset="100%" style="stop-color:#5856D6"/>
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+
+                            <div class="progress-center">
+                                <div class="progress-number" id="progress-number">0</div>
+                                <div class="progress-total" id="progress-total">из 5</div>
+                                <div class="progress-label">заданий</div>
+                            </div>
+                        </div>
+
+                        <!-- Легенда под кругом -->
+                        <div class="progress-legend">
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);"></div>
+                                <span>Изучение слов</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FF9500;"></div>
+                                <span>Тренировки</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="progress-message" class="progress-message">
                         Загрузка...
                     </div>
-                    <div id="action-buttons" style="display: flex; gap: 12px; justify-content: center;">
-                        <button id="review-btn" class="save-button" onclick="startReview()" style="background: linear-gradient(135deg, #FF9500 0%, #FF3B30 100%); display: none;">
-                            🔄 Повторить изученные
-                        </button>
-                    </div>
+                </div>
+
+                <!-- Кнопки действий -->
+                <div class="action-buttons">
+                    <button class="action-button primary" onclick="startLearning()">
+                        <div class="action-button-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                            </svg>
+                        </div>
+                        <div class="action-button-text">
+                            <div class="action-button-title">Изучить слова</div>
+                            <div class="action-button-subtitle">Новые слова на сегодня</div>
+                        </div>
+                    </button>
+
+                    <button class="action-button secondary" onclick="startReview()" id="review-btn" style="display: none;">
+                        <div class="action-button-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 4v6h6"/>
+                                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                            </svg>
+                        </div>
+                        <div class="action-button-text">
+                            <div class="action-button-title">Повторить</div>
+                            <div class="action-button-subtitle">Закрепить изученное</div>
+                        </div>
+                    </button>
                 </div>
             </div>
 
@@ -99,24 +177,88 @@
                     <div class="nav-title">Настройки</div>
                 </div>
 
-                <div class="section-title">Количество слов в день</div>
+                <div class="section-title">Количество заданий в день</div>
+
                 <div class="option-grid">
-                    <div class="option-card" onclick="selectWordsPerDay(5)" data-value="5">
+                    <div class="option-card" data-value="3" onclick="selectWordsPerDay(3)">
+                        <div class="option-number">3</div>
+                        <div class="option-label">Легко</div>
+                    </div>
+                    <div class="option-card" data-value="5" onclick="selectWordsPerDay(5)">
                         <div class="option-number">5</div>
-                        <div class="option-label">слов</div>
+                        <div class="option-label">Средне</div>
                     </div>
-                    <div class="option-card" onclick="selectWordsPerDay(10)" data-value="10">
+                    <div class="option-card" data-value="10" onclick="selectWordsPerDay(10)">
                         <div class="option-number">10</div>
-                        <div class="option-label">слов</div>
+                        <div class="option-label">Интенсивно</div>
                     </div>
-                    <div class="option-card" onclick="selectWordsPerDay(15)" data-value="15">
+                    <div class="option-card" data-value="15" onclick="selectWordsPerDay(15)">
                         <div class="option-number">15</div>
-                        <div class="option-label">слов</div>
+                        <div class="option-label">Максимум</div>
+                    </div>
+                    <div class="option-card" data-value="20" onclick="selectWordsPerDay(20)">
+                        <div class="option-number">20</div>
+                        <div class="option-label">Эксперт</div>
+                    </div>
+                    <div class="option-card" data-value="30" onclick="selectWordsPerDay(30)">
+                        <div class="option-number">30</div>
+                        <div class="option-label">Профи</div>
                     </div>
                 </div>
-                <button class="save-button" onclick="saveSettings()" id="save-settings" disabled>
+
+                <button class="save-button" id="save-settings" onclick="saveSettings()" disabled>
                     Сохранить настройки
                 </button>
+            </div>
+
+            <!-- Экран статистики -->
+            <div id="statistics-screen" class="screen">
+                <div class="nav-header">
+                    <button class="back-button" onclick="showScreen('home')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M19 12H5M12 19L5 12L12 5" stroke="#666666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="nav-title">Статистика</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon streak">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <div class="stat-number" id="streak-count-detail">0</div>
+                        <div class="stat-label">Дней подряд</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon words">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M6.5 2H20V20H6.5A2.5 2.5 0 0 1 4 17.5V4.5A2.5 2.5 0 0 1 6.5 2Z" fill="white"/>
+                            </svg>
+                        </div>
+                        <div class="stat-number" id="total-words-detail">0</div>
+                        <div class="stat-label">Слов изучено</div>
+                    </div>
+
+                    <div class="stat-card large-stat">
+                        <div class="stat-icon training">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                                <rect x="9" y="9" width="6" height="6" rx="1" fill="white"/>
+                                <circle cx="6" cy="6" r="3" fill="white"/>
+                                <circle cx="18" cy="6" r="3" fill="white"/>
+                                <circle cx="6" cy="18" r="3" fill="white"/>
+                                <circle cx="18" cy="18" r="3" fill="white"/>
+                                <path d="M6 9v6m12-6v6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div class="stat-number" id="training-count-detail">0</div>
+                        <div class="stat-label">Тренировок завершено</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Экран изучения -->
@@ -130,53 +272,51 @@
                     <div class="progress-indicator" id="word-progress">1 / 5</div>
                 </div>
 
-                <div class="learning-phase" id="learning-phase">
-                    📚 Запоминаем новые слова
-                </div>
+                <div class="learning-phase" id="learning-phase">📚 Запоминаем слова</div>
 
                 <div class="learning-progress">
-                    <div class="learning-progress-fill" id="learning-progress-fill" style="width: 20%"></div>
+                    <div class="learning-progress-fill" id="learning-progress-fill" style="width: 0%"></div>
                 </div>
 
-                <div class="word-card" id="word-card">
-                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                        <div class="word-image" id="word-image">🏠</div>
-                        <div class="word-english" id="word-english">house</div>
-                        <div class="word-transcript" id="word-transcript">[haʊs]</div>
+                <div class="word-card">
+                    <div class="word-image" id="word-image">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNNCAyMEMzIDIwIDIgMTkgMiAxOFY2QzIgNSAzIDQgNCA0SDIwQzIxIDQgMjIgNSAyMiA2VjE4QzIyIDE5IDIxIDIwIDIwIDIwSDRaIiBzdHJva2U9IiM2NjY2NjYiIHN0cm9rZS13aWR0aD0iMiIvPgo8cGF0aCBkPSJNOSAxMUgxNSIgc3Ryb2tlPSIjNjY2NjY2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNOSAxNUgxMyIgc3Ryb2tlPSIjNjY2NjY2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K" alt="Word placeholder" style="opacity: 0.3;">
+                    </div>
 
-                        <button class="play-button" onclick="playSound()">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                                <path d="M8 5V19L19 12L8 5Z" fill="white"/>
-                            </svg>
+                    <div class="word-english" id="word-english">Loading...</div>
+                    <div class="word-transcript" id="word-transcript">[ˈləʊdɪŋ]</div>
+
+                    <button class="play-button" onclick="playSound()">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                            <path d="M8 5v14l11-7z" fill="white"/>
+                        </svg>
+                    </button>
+
+                    <div class="word-russian" id="word-russian">Загрузка...</div>
+
+                    <!-- Секция запоминания -->
+                    <div id="memory-action" class="card-action-buttons">
+                        <button class="card-action-button memory-button" onclick="nextWord()">
+                            Запомнил! Далее
                         </button>
+                    </div>
 
-                        <div class="word-russian" id="word-russian">дом</div>
-
-                        <!-- Викторина -->
-                        <div class="quiz-options" id="quiz-options" style="display: none;">
-                            <div class="quiz-question" id="quiz-question">Выберите правильный перевод:</div>
-                            <div class="options-grid">
-                                <button class="option-btn" onclick="selectAnswer(0)" id="option-0">вариант 1</button>
-                                <button class="option-btn" onclick="selectAnswer(1)" id="option-1">вариант 2</button>
-                                <button class="option-btn" onclick="selectAnswer(2)" id="option-2">вариант 3</button>
-                                <button class="option-btn" onclick="selectAnswer(3)" id="option-3">вариант 4</button>
-                            </div>
-                        </div>
-
-                        <!-- Текстовый ввод -->
-                        <div class="text-input-section" id="text-input-section" style="display: none;">
-                            <div class="input-question" id="input-question">Введите перевод:</div>
-                            <input type="text" class="text-input" id="text-input" placeholder="Введите ответ...">
-                            <button class="check-btn" onclick="checkTextAnswer()">Проверить</button>
+                    <!-- Секция викторины -->
+                    <div id="quiz-options" class="quiz-options" style="display: none;">
+                        <div class="quiz-question" id="quiz-question">Как это слово на английском?</div>
+                        <div class="options-grid">
+                            <button class="option-btn" id="option-0" onclick="selectAnswer(0)">Option 1</button>
+                            <button class="option-btn" id="option-1" onclick="selectAnswer(1)">Option 2</button>
+                            <button class="option-btn" id="option-2" onclick="selectAnswer(2)">Option 3</button>
+                            <button class="option-btn" id="option-3" onclick="selectAnswer(3)">Option 4</button>
                         </div>
                     </div>
 
-                    <div class="card-action-buttons">
-                        <div id="memory-action" style="display: none;">
-                            <button class="card-action-button memory-button" onclick="nextWord()">
-                                Запомнил ✓
-                            </button>
-                        </div>
+                    <!-- Секция текстового ввода -->
+                    <div id="text-input-section" class="text-input-section" style="display: none;">
+                        <div class="input-question" id="input-question">Переведите слово:</div>
+                        <input type="text" class="text-input" id="text-input" placeholder="Введите перевод">
+                        <button class="check-btn" onclick="checkTextAnswer()">Проверить</button>
                     </div>
                 </div>
             </div>
@@ -191,8 +331,10 @@
                     </div>
                     <div class="completion-title">Потрясающе!</div>
                     <div class="completion-subtitle">Вы выучили новые слова и проверили свои знания</div>
-                    <button class="save-button" onclick="showScreen('home')">
-                        На главную
+                    <button class="action-button primary" onclick="showScreen('home')">
+                        <div class="action-button-text">
+                            <div class="action-button-title">Вернуться на главную</div>
+                        </div>
                     </button>
                 </div>
             </div>
@@ -216,15 +358,21 @@
                 <div class="footer-text">Главная</div>
             </div>
 
-            <div class="footer-item" onclick="showScreen('settings')">
+            <div class="footer-item disabled" onclick="showScreen('trainings')">
+                <div class="coming-soon">скоро</div>
                 <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                    <rect x="9" y="9" width="6" height="6" rx="1"/>
+                    <circle cx="6" cy="6" r="3"/>
+                    <circle cx="18" cy="6" r="3"/>
+                    <circle cx="6" cy="18" r="3"/>
+                    <circle cx="18" cy="18" r="3"/>
+                    <path d="M6 9v6m12-6v6" stroke-linecap="round"/>
                 </svg>
-                <div class="footer-text">Настройки</div>
+                <div class="footer-text">Тренировки</div>
             </div>
         </div>
     </div>
-    <script src="/static/script.js"></script>
+
+    <script src="script.js"></script>
 </body>
 </html>
