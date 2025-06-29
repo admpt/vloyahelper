@@ -46,7 +46,8 @@ function initTelegramWebApp() {
             document.body.classList.add('dark-theme');
         }
 
-        loadUserData();
+        // Запускаем начальную загрузку
+        startInitialLoading();
     } else {
         console.log('⚠️ Telegram WebApp недоступен, используем тестовые данные');
         telegramUser = {
@@ -55,8 +56,45 @@ function initTelegramWebApp() {
             last_name: 'User',
             username: 'testuser'
         };
-        loadUserData();
+        startInitialLoading();
     }
+}
+
+// Функция запуска начальной загрузки
+function startInitialLoading() {
+    const loadingScreen = document.getElementById('initial-loading');
+
+    // Показываем загрузочный экран
+    loadingScreen.classList.remove('hide');
+
+    // Имитируем загрузку данных
+    setTimeout(() => {
+        loadUserData();
+    }, 2000); // 2 секунды загрузки
+}
+
+// Функция скрытия загрузочного экрана
+function hideInitialLoading() {
+    const loadingScreen = document.getElementById('initial-loading');
+    loadingScreen.classList.add('hide');
+
+    // Удаляем элемент через время анимации
+    setTimeout(() => {
+        loadingScreen.remove();
+    }, 800);
+}
+
+// Функция показа загрузочного экрана изучения (БЕЗ автоматического скрытия)
+function showLearningLoading() {
+    const learningLoading = document.getElementById('learning-loading');
+    learningLoading.classList.add('show');
+    // Убираем setTimeout - теперь скрытие управляется вручную
+}
+
+// Функция скрытия загрузочного экрана изучения
+function hideLearningLoading() {
+    const learningLoading = document.getElementById('learning-loading');
+    learningLoading.classList.remove('show');
 }
 
 // API функции
@@ -99,6 +137,7 @@ async function loadUserData() {
         userData = await apiRequest(`/users/${telegramUser.id}`);
         if (userData) {
             console.log('✅ Данные пользователя загружены из БД:', userData);
+            hideInitialLoading();
             updateUI();
             checkDayStatus();
         } else {
@@ -116,6 +155,7 @@ async function loadUserData() {
                 last_name: telegramUser.last_name || null
             });
             console.log('✅ Пользователь создан в БД:', userData);
+            hideInitialLoading();
             updateUI();
             checkDayStatus();
         } catch (createError) {
@@ -139,6 +179,7 @@ async function loadUserData() {
                 current_streak: 0,
                 last_learning_date: null
             };
+            hideInitialLoading();
             updateUI();
             checkDayStatus();
         }
@@ -421,31 +462,56 @@ async function startLearning() {
         return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    const learnedToday = userData.last_learning_date === today ? (userData.eng_learned_words?.length || 0) : 0;
-    const remainingToLearn = userData.words_per_day - learnedToday;
+    // Показываем загрузочный экран изучения
+    showLearningLoading();
 
-    if (remainingToLearn <= 0) {
-        alert('Все слова на сегодня уже изучены! Попробуйте повторение.');
-        return;
+    try {
+        const today = new Date().toISOString().split('T')[0];
+
+        // ИСПРАВЛЕННАЯ логика подсчета слов - каждый день можно изучать новые слова
+        const remainingToLearn = userData.words_per_day;
+
+        if (remainingToLearn <= 0) {
+            hideLearningLoading();
+            alert('Не настроено количество слов для изучения!');
+            return;
+        }
+
+        // Получаем новые слова (исключая уже изученные) - ВО ВРЕМЯ показа загрузочного экрана
+        const excludeIds = (userData.eng_learned_words || []).concat(userData.eng_skipped_words || []);
+        const newWords = await getRandomWords(remainingToLearn, excludeIds);
+
+        if (newWords.length === 0) {
+            hideLearningLoading();
+            alert('Нет доступных слов для изучения!');
+            return;
+        }
+
+        currentLearningSession.allWords = newWords;
+        currentLearningSession.isReviewMode = false;
+
+        // Подготавливаем сессию изучения
+        currentLearningSession.batchIndex = 0;
+        currentLearningSession.currentIndex = 0;
+        currentLearningSession.phase = 'learning';
+        currentLearningSession.isTranslationShown = false;
+        currentLearningSession.learnedCount = 0;
+        currentLearningSession.wrongAnswers = [];
+
+        loadCurrentBatch();
+
+        // Скрываем загрузочный экран и СРАЗУ показываем экран изучения
+        hideLearningLoading();
+        showScreen('learning');
+        displayCurrentWord();
+
+    } catch (error) {
+        console.error('❌ Ошибка при загрузке слов:', error);
+        hideLearningLoading();
+        alert('Ошибка загрузки слов. Попробуйте еще раз.');
     }
-
-    // Получаем новые слова (исключая уже изученные)
-    const excludeIds = (userData.eng_learned_words || []).concat(userData.eng_skipped_words || []);
-    const newWords = await getRandomWords(remainingToLearn, excludeIds);
-
-    if (newWords.length === 0) {
-        alert('Нет доступных слов для изучения!');
-        return;
-    }
-
-    currentLearningSession.allWords = newWords;
-    currentLearningSession.isReviewMode = false;
-
-    startLearningSession();
 }
 
-// Повторение изученных слов
 async function startReview() {
     console.log('🔄 Начинаем повторение изученных слов...');
 
@@ -454,21 +520,44 @@ async function startReview() {
         return;
     }
 
-    // Берем последние изученные слова для повторения
-    const lastWords = userData.eng_learned_words.slice(-10); // последние 10 слов
-    const learnedWords = await getWordsByIds(lastWords);
+    // Показываем загрузочный экран изучения
+    showLearningLoading();
 
-    if (learnedWords.length === 0) {
-        alert('Не удалось загрузить слова для повторения!');
-        return;
+    try {
+        // Берем последние изученные слова для повторения - ВО ВРЕМЯ показа загрузочного экрана
+        const lastWords = userData.eng_learned_words.slice(-10); // последние 10 слов
+        const learnedWords = await getWordsByIds(lastWords);
+
+        if (learnedWords.length === 0) {
+            hideLearningLoading();
+            alert('Не удалось загрузить слова для повторения!');
+            return;
+        }
+
+        currentLearningSession.allWords = learnedWords;
+        currentLearningSession.isReviewMode = true;
+
+        // Подготавливаем сессию изучения
+        currentLearningSession.batchIndex = 0;
+        currentLearningSession.currentIndex = 0;
+        currentLearningSession.phase = 'learning';
+        currentLearningSession.isTranslationShown = false;
+        currentLearningSession.learnedCount = 0;
+        currentLearningSession.wrongAnswers = [];
+
+        loadCurrentBatch();
+
+        // Скрываем загрузочный экран и СРАЗУ показываем экран изучения
+        hideLearningLoading();
+        showScreen('learning');
+        displayCurrentWord();
+
+    } catch (error) {
+        console.error('❌ Ошибка при загрузке слов для повторения:', error);
+        hideLearningLoading();
+        alert('Ошибка загрузки слов для повторения. Попробуйте еще раз.');
     }
-
-    currentLearningSession.allWords = learnedWords;
-    currentLearningSession.isReviewMode = true;
-
-    startLearningSession();
 }
-
 // Общая функция запуска сессии обучения
 function startLearningSession() {
     currentLearningSession.batchIndex = 0;
@@ -505,7 +594,7 @@ function displayCurrentWord() {
 
     if (imageEl) {
         // Проверяем, есть ли image_data и что это не заблокированная картинка
-        const blockedImageData = "iVBORw0KGgoAAAANSUhEUgAAAH8AAAB/CAIAAABJ34pEAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYxIDY0LjE0MDk0OSwgMjAxMC8xMi8wNy0xMDo1NzowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNS4xIFdpbmRvd3MiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6NEJFNkNFQUExNUYxMTFFQTlGOEI4RTJGRUNBQTUwOTEiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6NEJFNkNFQUIxNUYxMTFFQTlGOEI4RTJGRUNBQTUwOTEiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo0QkU2Q0VBODE1RjExMUVBOUY4QjhFMkZFQ0FBNTA5MSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo0QkU2Q0VBOTE1RjExMUVBOUY4QjhFMkZFQ0FBNTA5MSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Pm22FE0AABq1SURBVHja7J2HduNKjoYZJFE5B4fuuTPz/k+0e3b23HvbbmXJClQm9wNKouXQQU7t9rK6nRQo1l8o4AcKhbLDMLTi9ouaHaMfox+jH7cY/Rj9uMXox+jHLUY/Rj9uMfox+nGL0Y/Rj1uMfox+3GL0Y/TjFqMfox+33x793W632Wy3uy1f0ra7IAj44rZDvluW3r/tOrbruo7rOI78TNBcl2/JZNK2Y/Sf1NabzWKxnM3mq9VquVit1ht+YSQ2m81uFzAWOgqBbdmJZCKVSiX5nkzySzrteV4qm83msplMJm2/1xF4X+gj4MC9BGf9pz83/ET81zIFttuNCD9TANwDMwOM7B/k3U3sRT6ZSKQ8GREGgiHx5AfjIcMSo/9IQ6Kn09l4PLmZ8HPu+wsekVu8K7jfv9+7L7YZIQaDMSgU8vlctlop80sul30ns+HXo79colt81Iu/WIA4km+kH+jBjjt0HFvA0n8GNfvhmOwNwNH3UL4zQ3gLU8KTlkQP8SOv+qhQyDEMPPX/EX0+F8UNysPReDgcD4ajw7f9WW+2u+Vqbhj9GAI+vz5EvNRJjOLpeDoeDwajkb/wt1sPpwAQ8tufJ1/qPjIZr1gs1Br1UjHfqNcw0B8cfWWJAdRxPL7p9Qbd7gD019st1tKx7e/L+34sDmOyh1X0S/SK/V/aox90y8w8Xs08qJRLrVajXqvCjhwhrfbHRB+RH41uRqPxYDhGuS+wq9stNwBLN+jvJT209nxeiM1O6byTTEElk17KY6RgNOhrXqCewA7MHVuuwRvWsNK1NJ4RMiqP69dhOkUzCa+BN6pJSIE7VrlWq9SqFYzBR0PfqHi0TbvT6/UHk8nMdZ0DKEc0xvymjzrOflAACNUMZYTFZ9JpKGXKE0LJCIE1JJRBctXJ4lOWqzVmHNpqGKrxycw4milxb4YZbcYQ4jFUq5WLs2alWoYVoZ3ewBIk3maQgbvb7Y0nU+gkw2CUu3WsM0Q1izbge8JxUQi5bBZ2mM1mspm00PdkQiF2jSzzHSRVjweH8bKNPtnqF9AzvWBPk+nMny9QcYyGubgY9sOoG8vBI7wX4eBqvB4thE1+A8/g1dFHPGHviHy73YXDA4qrPlH0Ao0XCHxJVQLAjJhDCuHnpRIWMZtOp5+s6KCw4j1Mse1T4bGrtfrIxkm2IiKLpPPnuje3Ww003UMQ6NRQ9e9KSV9Xc3DxQH96rqNQC38Jd1G1d+gd2Jp4DZINwoXA1gul/CHGABMsXqsoqGe4zxv8I83O1xm0Mfa482Ndf4x2XCKHeeWWR3kwELF4RE0Mfa882Nfw=";
+        const blockedImageData = "iVBORw0KGgoAAAANSUhEUgAAAH8AAAB/CAIAAABJ34pEAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYxIDY0LjE0MDk0OSwgMjAxMC8xMi8wNy0xMDo1NzowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNS4xIFdpbmRvd3MiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6NEJFNkNFQUExNUYxMTFFQTlGOEI4RTJGRUNBQTUwOTEiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6NEJFNkNFQUIxNUYxMTFFQTlGOEI4RTJGRUNBQTUwOTEiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo0QkU2Q0VBODE1RjExMUVBOUY4QjhFMkZFQ0FBNTA5MSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo0QkU2Q0VBOTE1RjExMUVBOUY4QjhFMkZFQ0FBNTA5MSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Pm22FE0AABq1SURBVHja7J2HduNKjoYZJFE5B4fuuTPz/k+0e3b23HvbbmXJClQm9wNKouXQQU7t9rK6nRQo1l8o4AcKhbLDMLTi9ouaHaMfox+jH7cY/Rj9uMXox+jHLUY/Rj9uMfox+nGL0Y/Rj1uMfox+33x393W732Wy3uy1f0ra7IAj44rZDvluW3r/tOrbruo7rOI78TNBcl2/JZNK2Y/Sf1NabzWKxnM3mq9VquVit1ht+YSQ2m81uFzAWOgqBbdmJZCKVSiX5nkzySzrteV4qm83msplMJm2/1xF4X+gj4MC9BGf9pz83/ET81zIFttuNCD9TANwDMwOM7B/k3U3sRT6ZSKQ8GREGgiHx5AfjIcMSo/9IQ6Kn09l4PLmZ8HPu+wsekVu8K7jfv9+7L7YZIQaDMSgU8vlctlop80sul30ns+HXo79colu81Iu/WIA4km+kH+jBjjt0HFvA0n8GNfvhmOwNwNH3UL4zQ3gLU8KTlkQP8SOv+qhQyDEMPPX/EX0+F8UNysPReDgcD4ajw7f9WW+2u+Vqbhj9GAI+vz5EvNRJjOLpeDoeDwajkb/wt1sPpwAQ8tufJ1/qPjIZr1gs1Br1UjHfqNcw0B8cfWWJAdRxPL7p9Qbd7gD019st1tKx7e/L+34sDmOyh1X0S/SK/V/aox90y8w8Xs08qJRLrVajXqvCjhwhrfbHRB+RH41uRqPxYDhGuS+wq9stNwBLN+jvJT209nxeiM1O6byTTEElk17KY6RgNOhrXqCewA7MHVuuwRvWsNK1NJ4RMiqP69dhOkUzCa+BN6pJSIE7VrlWq9SqFYzBR0PfqHi0TbvT6/UHk8nMdZ0DKEc0xvymjzrOflAACNUMZYTFZ9JpKGXKE0LJCIE1JJRBctXJ4lOWqzVmHNpqGKrxycw4milxb4YZbcYQ4jFUq5WLs2alWoYVoZ3ewBIk3maQgbvb7Y0nU+gkw2CUu3WsM0Q1izbge8JxUQi5bBZ2mM1mspm00PdkQiF2jSzzHSRVjweH8bKNPtnqF9AzvWBPk+nMny9QcYyGubgY9sOoG8vBI7wX4eBqvB4thE1+A8/g1dFHPGHviHy73YXDA4qrPlH0Ao0XCHxJVQLAjJhDCuHnpRIWMZtOp5+s6KCw4j1Mse1T4bGrtfrIxkm2IiKLpPPnuje3Ww003UMQ6NRQ9e9KSV9Xc3DxQH96rqNQC38Jd1G1d+gd2Jp4DZINwoXA1gul/CHGABMsXqsoqGe4zxv8I83O1xm0Mfa482Ndf4x2XCKHeeWWR3kwELF4RE0Mfa882Nfw=";
 
         if (word.image_data && word.image_data !== blockedImageData && !word.image_data.startsWith(blockedImageData.substring(0, 100))) {
             // Если это картинка (base64) и не заблокированная

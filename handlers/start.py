@@ -18,7 +18,7 @@ GROUP_ID = -1002808343764
 INVITE_LINK = "https://t.me/+DyydsMuO8vA5ZTJi"
 
 # URL вашего мини-приложения - измените на свой
-WEBAPP_URL = "https://647f-89-169-10-113.ngrok-free.app/static/index.html"
+WEBAPP_URL = "https://f260-82-215-100-140.ngrok-free.app/static/index.html"
 
 
 def get_invite_keyboard():
